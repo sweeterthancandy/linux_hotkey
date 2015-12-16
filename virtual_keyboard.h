@@ -7,7 +7,10 @@
 #include <linux/input.h>
 #include <linux/uinput.h>
 
+#include <boost/format.hpp>
 #include <boost/xpressive/xpressive.hpp>
+#include <boost/xpressive/regex_actions.hpp>
+#include <boost/xpressive/regex_constants.hpp>
 
 namespace virtual_keyboard_detail{
 
@@ -62,7 +65,6 @@ namespace virtual_keyboard_detail{
                 }
                 void flush(){
                         if( buffer_.size() ){
-                                buffer_.push_back( {0,0,0} );
                                 int to_write = buffer_.size() * sizeof(struct input_event);
                                 int wrote = write( fd_, static_cast<struct input_event*>(&buffer_.front()),to_write);
                                 if( to_write != wrote )
@@ -82,82 +84,10 @@ namespace virtual_keyboard_detail{
          *
          */
         struct virtual_keyboard{
-
                 explicit virtual_keyboard(const std::string& name)
                         : backend_( name )
                 {}
-                void esc();
-                void backspace();
-        private:
-                virtual_keyboard_backend backend_;
-        };
-
-        struct command_buffer{
-                void put(__u16 type, __u16 code, __u16 value){
-                        assert( code < KEY_MAX && "invalid code");
-                        struct input_event ev;
-                        memset(&ev,0,sizeof(ev));
-                        gettimeofday(&ev.time, NULL );
-                        ev.type = type;
-                        ev.code = code;
-                        ev.value = value;
-                        buffer_.push_back(ev);
-                }
-        private:
-                std::vector<struct input_event> buffer_;
-        };
-
-        namespace xpr = boost::xpressove;
-
-        namespace semantics{
-                struct tab_impl{
-                        using result_type = void;
-                        void operator()(command_buffer& buf)const{
-                        }
-                }
-
-                #define SEMANTIC_FUNCTIONS\
-                        (tab_impl)
-                #define AUX(r,data,elem)  const boost::xpressive::function<BOOST_PP_CAT(elem,_impl)>::type elem = {{}};
-                BOOST_PP_SEQ_FOR_EACH( AUX, ~, SEMANTIC_FUNCTIONS )
-                #undef AUX
-
-        }
-
-        /*
-         * takes a string and executes them
-         */
-        struct virtual_keyboard_parser{
-
-                xpr::sregex rgx_;
-                xpr::sregex tab_;
-
-                virtual_keyboard_parser()
-                {
-                        tab_ = xpr::as_xpr("<TAB>") [semantics::tab(xpr::ref(cmd_buffer_))];
-                        rgx_ = xpr::bos >> tab_;
-                }
-                void parse(std::string const& cmd){
-                        for(auto iter=cmd.begin(),end(cmd.end());iter!=end;++iter){
-
-                                // parse token
-                                
-                                if( std::is_space(*iter))
-                                        continue;
-                                
-                                if( try_parse_single_char(*iter) )
-                                        continue;
-
-                                else if ( xpr::regex_search( iter, end, rgx_ ) )
-                                        continue;
-                                else
-                                        BOOST_THROW_EXCEPTION(std::domain_error("bad char " + std::string(1,*iter)));
-
-
-                        }
-                }
-        private:
-                bool try_parse_single_char(char c){
+                void graph(char c){
                         #define VIRTUAL_KBD_char_mapping\
                                 (('a')(KEY_A)(0))\
                                 (('A')(KEY_A)(1))\
@@ -212,39 +142,138 @@ namespace virtual_keyboard_detail{
                                 (('z')(KEY_Z)(0))\
                                 (('Z')(KEY_Z)(1))\
 
-#define VIRTUAL_KBD_aux(r,data,elem) \
-                        case BOOST_PP_SEQ_ELEM(0,elem): \
-                                if( BOOST_PP_SEQ_ELEM(2,elem) ){ \
-                                        cmd_buffer_.shift();\
-                                        cmd_buffer_.put( \
-                                                EV_KEY, \
-                                                BOOST_PP_SEQ_ELEM(1,elem),\
-                                                1);\
-                                        cmd_buffer_.put( \
-                                                EV_KEY, \
-                                                BOOST_PP_SEQ_ELEM(1,elem),\
-                                                0);\
-                                        cmd_buffer_.unshift();\
-                                } else{\
-                                        cmd_buffer_.put( \
-                                                EV_KEY, \
-                                                BOOST_PP_SEQ_ELEM(1,elem),\
-                                                1);\
-                                        cmd_buffer_.put( \
-                                                EV_KEY, \
-                                                BOOST_PP_SEQ_ELEM(1,elem),\
-                                                0);\
-                                }\
-                                break;
-                        
+                        switch(c){
+                                #define VIRTUAL_KBD_aux(r,data,elem) \
+                                        case BOOST_PP_SEQ_ELEM(0,elem): \
+                                                if( BOOST_PP_SEQ_ELEM(2,elem) ) \
+                                                        shift_();\
+                                                press_( BOOST_PP_SEQ_ELEM(1,elem) );\
+                                                if( BOOST_PP_SEQ_ELEM(2,elem) ) \
+                                                        unshift_();\
+                                                break;
+                                BOOST_PP_SEQ_FOR_EACH( VIRTUAL_KBD_aux,~,VIRTUAL_KBD_char_mapping )
+                                default:
+                                        std::cout << boost::format("don't know '%s'\n") % c;
+                                        BOOST_THROW_EXCEPTION(std::domain_error("unknown key"));
+                        }
+                        #undef VIRTUAL_KBD_char_mapping
+                        #undef VIRTUAL_KBD_aux
+                }
+                void tab(){
+                        press_( KEY_TAB );
+                }
+                void sync_flush(){
+                        backend_.sync();
+                        backend_.flush();
+                }
+        private:
+                void shift_(){
+                        backend_.put( EV_KEY, KEY_RIGHTSHIFT, 1 );
+                }
+                void unshift_(){
+                        backend_.put( EV_KEY, KEY_RIGHTSHIFT, 0 );
+                }
+                void press_(__u16 key){
+                        backend_.put( EV_KEY, key, 1 );
+                        backend_.put( EV_KEY, key, 0 );
+                }
+                virtual_keyboard_backend backend_;
+        };
 
+        struct command_buffer{
+                void put(__u16 type, __u16 code, __u16 value){
+                        assert( code < KEY_MAX && "invalid code");
+                        struct input_event ev;
+                        memset(&ev,0,sizeof(ev));
+                        gettimeofday(&ev.time, NULL );
+                        ev.type = type;
+                        ev.code = code;
+                        ev.value = value;
+                        buffer_.push_back(ev);
+                }
+        private:
+                std::vector<struct input_event> buffer_;
+        };
+
+        namespace xpr = boost::xpressive;
+
+        namespace semantics{
+                struct tab_impl{
+                        using result_type = void;
+                        void operator()(virtual_keyboard& kbd)const{
+                                kbd.tab();
+                        }
+                };
+
+                #define SEMANTIC_FUNCTIONS\
+                        (tab)
+                #define AUX(r,data,elem)  const boost::xpressive::function<BOOST_PP_CAT(elem,_impl)>::type elem = {{}};
+                BOOST_PP_SEQ_FOR_EACH( AUX, ~, SEMANTIC_FUNCTIONS )
+                #undef AUX
+        }
+
+        /*
+         * takes a string and executes them
+         */
+        struct virtual_keyboard_parser{
+
+                xpr::sregex rgx_;
+                xpr::sregex tab_;
+
+                virtual_keyboard_parser()
+                try : kbd_( "vkbd" )
+                {
+                        tab_ = xpr::as_xpr("<TAB>") [semantics::tab(xpr::ref(kbd_))];
+                        rgx_ = tab_;
+                }
+                catch(std::exception const& e){}
+                void parse(std::string const& cmd){
+                        for(auto iter=cmd.begin(),end(cmd.end());iter!=end;++iter){
+
+                                std::cout << boost::format("trying %s\n") % *iter;
+                                // parse token
+                                
+                                if( std::isspace(*iter)){
+                                        continue;
+                                }
+                                
+                                if( try_parse_single_char(*iter) )
+                                        continue;
+
+                                std::cout << boost::format("trying \"%s\"\n") % std::string(iter,end);
+                                xpr::smatch m;
+                                if ( xpr::regex_search( iter, end, m, rgx_ ) ){
+                                        std::advance(iter,m.length()-1);
+                                        continue;
+                                }
+
+                                BOOST_THROW_EXCEPTION(std::domain_error("bad char " + std::string(1,*iter)));
+
+
+                        }
+                        kbd_.sync_flush();
+                }
+        private:
+                bool try_parse_single_char(char c){
+                        switch(c){
+                                case '<':
+                                        return false;
+                                default:
+                                        if( std::isgraph(c) ){
+                                                kbd_.graph(c);
+                                                return true;
+                                        }
+                                        return false;
+                        }
+                        assert( 0 );
                 }
 
-                command_buffer cmd_buffer_;
+                virtual_keyboard kbd_;
         };
 
 }
 
 
 using virtual_keyboard_detail::virtual_keyboard;
+using virtual_keyboard_detail::virtual_keyboard_parser;
 
