@@ -230,7 +230,6 @@ namespace virtual_keyboard_detail{
                 void parse(std::string const& cmd){
                         for(auto iter=cmd.begin(),end(cmd.end());iter!=end;++iter){
 
-                                std::cout << boost::format("trying %s\n") % *iter;
                                 // parse token
                                 
                                 if( std::isspace(*iter)){
@@ -240,7 +239,6 @@ namespace virtual_keyboard_detail{
                                 if( try_parse_single_char(*iter) )
                                         continue;
 
-                                std::cout << boost::format("trying \"%s\"\n") % std::string(iter,end);
                                 xpr::smatch m;
                                 if ( xpr::regex_search( iter, end, m, rgx_ ) ){
                                         std::advance(iter,m.length()-1);
