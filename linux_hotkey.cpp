@@ -16,6 +16,17 @@
 #include "virtual_keyboard.h"
 #include "event_monitor.h"
 
+/*
+ * Issues:
+ *      key repeats
+ *
+ */
+
+struct pattern{
+        void push(__u16 key){
+        }
+};
+
 struct pattern_matcher{
 
         using callback_t = std::function<void()>;
@@ -90,10 +101,6 @@ struct driver{
         }
         int run(){
                 io_.run();
-                //using namespace std::chrono_literals;
-                //std::this_thread::sleep_for( 1s );
-                //kbd_.parse( "gerry<TAB>candy" );
-                //std::this_thread::sleep_for( 1s );
         }
 private:
         boost::asio::io_service io_;

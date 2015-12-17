@@ -8,9 +8,12 @@ LDLIBS+=-lstdc++
 .PHONY: default-target
 default-target: linux_hotkey
 
+linux_hotkey: linux_hotkey.o virtual_keyboard.o
+
 %: %.cpp
 
-linux_hotkey.o: virtual_keyboard.h
+linux_hotkey.o: virtual_keyboard.h 
+virtual_keyboard.o: virtual_keyboard.h
 
 .PHONY: clean
 clean:

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <boost/signals2/signal.hpp>
+#include <boost/asio.hpp>
+#include <boost/array.hpp>
 
 //struct input_event {
 	//struct timeval time;
