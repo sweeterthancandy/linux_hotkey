@@ -15,6 +15,8 @@
 
 #include "virtual_keyboard.h"
 #include "event_monitor.h"
+#include "keyboard_state.h"
+#include "pattern_matcher.h"
 
 /*
  * Issues:
@@ -22,54 +24,15 @@
  *
  */
 
-struct pattern{
-        void push(__u16 key){
-        }
-};
-
-struct pattern_matcher{
-
-        using callback_t = std::function<void()>;
-
-        void push(std::vector<int> keys, callback_t callback){
-                boost::sort( keys );
-                patterns_.emplace_back( boost::fusion::make_vector( keys, std::move(callback) ) );
-        }         
-        template<typename Iter>
-        void match(Iter first, Iter last){
-                using boost::fusion::at_c;
-
-                assert( std::is_sorted(first,last) && "precondition not met" );
-
-                auto sz = std::distance(first,last);
-                
-                for( auto const& p: patterns_ ){
-                        auto const& pat = at_c<0>(p);
-                        if( pat.size() == sz ){
-                                if( std::equal( first, last , pat.begin() ) ){
-                                        at_c<1>(p)();
-                                }
-                        }
-                }
-        } 
-private:
-        std::vector<
-                boost::fusion::vector<
-                        std::vector<int>, 
-                        std::function<void()> 
-                > 
-        > patterns_;
-};
 
 struct driver{
         driver(int argc, char** argv){
                 namespace bf = boost::filesystem;
 
-                std::vector<int> keys;
-                keys.push_back( KEY_F2 );
-                pm_.push( keys, [this](){ 
-                        kbd_.parse( "gerry  candy" );
-                        std::exit(EXIT_SUCCESS);
+                keyboard_state tmp;
+                tmp.down( KEY_F2 );
+                pm_.push( tmp, [this](){ 
+                        kbd_->parse( "first<TAB>second" );
                 } );
 
                 for(bf::directory_iterator iter("/dev/input/"),end;iter!=end;++iter){
@@ -80,24 +43,24 @@ struct driver{
                         if( ! bf::is_directory( iter->path() ) )
                         {
                                 auto sptr = std::make_shared<event_monitor>(io_, iter->path().string());
-                                sptr->start();
                                 sptr->connect( [this](const std::string& dev, const struct input_event& ev){
                                         if(ev.type == EV_KEY){
-                                                if( ev.value == 0 ){
-                                                        auto iter = keys_.find( ev.code );
-                                                        if( iter != keys_.end() )
-                                                                keys_.erase( iter );
-                                                        
-                                                } else if (ev.value == 1 ){
-                                                        keys_.insert( ev.code );
+                                                if( ev.value == 0 ){ // uo
+                                                        state_.up( ev.code );
+                                                        pm_.match(state_);
+                                                } else if (ev.value == 1 ){ // down
+                                                        state_.down( ev.code );
+                                                        pm_.match(state_);
+                                                } else if( ev.value == 2 ){ // down repeated
                                                 }
-                                                pm_.match( keys_.begin(), keys_.end() );
                                         }
                                                                         
                                 });
+                                sptr->start();
                                 monitors_.emplace_back(sptr);
                         }
                 }
+                kbd_ = std::make_shared<virtual_keyboard_parser>();
         }
         int run(){
                 io_.run();
@@ -105,9 +68,9 @@ struct driver{
 private:
         boost::asio::io_service io_;
         std::vector<std::shared_ptr<event_monitor> > monitors_;
-        virtual_keyboard_parser kbd_;
+        std::shared_ptr<virtual_keyboard_parser> kbd_;
         pattern_matcher pm_;
-        std::set<int> keys_;
+        keyboard_state state_;
 };
 
 int main(int argc, char** argv){
