@@ -3,6 +3,7 @@
 #include <thread>
 #include <chrono>
 #include <algorithm>
+#include <fstream>
 
 #include <boost/format.hpp>
 #include <boost/asio.hpp>
@@ -14,6 +15,7 @@
 #include <boost/program_options.hpp>
 #include <boost/xpressive/xpressive.hpp>
 #include <boost/xpressive/regex_actions.hpp>
+#include <boost/log/trivial.hpp>
 
 #include <boost/range/algorithm.hpp>
 
@@ -36,11 +38,14 @@ struct driver{
                 namespace po = boost::program_options;
                 namespace xpr = boost::xpressive;
 
+
                 bool help;
+                std::vector<std::string> cmds;
 
                 po::options_description desc;
                 desc.add_options()
-                        ("config",po::value<std::string>()->default_value("."),"root")
+                        ("config",po::value<std::string>(),"configuration file to read")
+                        ("cmd",po::value<std::vector<std::string> >(&cmds),"commands to use")
                         ("help",po::value<bool>(&help)->default_value(false)->implicit_value(true),
                          "print this message")
                         ;
@@ -55,6 +60,7 @@ struct driver{
                                 .run()
                        , vm_ 
                 );
+                po::notify(vm_);
 
                 xpr::sregex config_rgx;
                 using xpr::s1;
@@ -71,13 +77,24 @@ struct driver{
                        ; 
 
                 std::stringstream sstr;
-                sstr << "{<F2>}->{gerry candy}\n";
-                sstr << "{abc}->{xyz}\n";
-                sstr << "  {abc}  ->{xyz}  \n";
+                if( vm_.count("config") ){
+                        std::string fn = vm_["config"].as<std::string>();
+                        if( ! bf::exists( fn ) )
+                                BOOST_THROW_EXCEPTION(std::logic_error("config file doesn't exist"));
+                        std::ifstream ifstr(fn);
+                        if( ! ifstr.is_open() )
+                                BOOST_THROW_EXCEPTION(std::logic_error("unable to open config file"));
+                        for( std::string line; std::getline(ifstr,line);)
+                                sstr << line;
+                } 
+                BOOST_LOG_TRIVIAL(error) << cmds.size();
+                for( auto const& s : cmds ){
+                        sstr << s;
+                }
 
                 key_conv konv;
-
                 for(std::string line; std::getline(sstr,line);){
+                        BOOST_LOG_TRIVIAL(error) << "parsing line " << line;
                         xpr::smatch m;
                         auto ret = xpr::regex_search( line, m, config_rgx );
                         if( ret ){
@@ -101,6 +118,8 @@ struct driver{
                                                 % seq % map;
                                         kbd_->parse( map );
                                 } );
+                        } else{
+                                std::cerr << "unable to parse \"" << line << "\"\n";
                         }
                 }
 

@@ -1,9 +1,12 @@
 CXXFLAGS=-std=c++14
+CPPFLAGS+=-DBOOST_LOG_DYN_LINK
 
 LDLIBS+=-lboost_system
 LDLIBS+=-lboost_filesystem
 LDLIBS+=-lboost_program_options
+LDLIBS+=-lboost_log
 LDLIBS+=-lstdc++
+LDLIBS+=-lpthread
 
 
 .PHONY: default-target
