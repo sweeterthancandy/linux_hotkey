@@ -31,14 +31,13 @@ namespace key_conv_detail{
 }
 
 struct key_conv{
-        boost::xpressive::sregex rgx_, tab_, f1_, f2_;
-        key_conv_detail::contex ctx_;
         key_conv(){
                 using namespace key_conv_detail;
                 tab_ = xpr::as_xpr("<TAB>")  [semantics::dispatch_key(xpr::ref(ctx_),KEY_TAB,false)];
                 f1_ = xpr::as_xpr("<F1>")    [semantics::dispatch_key(xpr::ref(ctx_),KEY_F1,false)];
                 f2_ = xpr::as_xpr("<F2>")    [semantics::dispatch_key(xpr::ref(ctx_),KEY_F2,false)];
-                rgx_ = tab_ | f1_ | f2_;
+                f3_ = xpr::as_xpr("<F3>")    [semantics::dispatch_key(xpr::ref(ctx_),KEY_F3,false)];
+                rgx_ = tab_ | f1_ | f2_ | f3_;
         }
         // out(__u16, bool upper)
         // aBc<ESC> -> 
@@ -70,6 +69,25 @@ private:
         bool try_single_(char c, Output&& out){
 
                 #define VIRTUAL_KBD_char_mapping\
+                        (('@')(KEY_APOSTROPHE)(1))\
+                        (('1')(KEY_1)(0))\
+                        (('!')(KEY_1)(1))\
+                        (('2')(KEY_2)(0))\
+                        (('"')(KEY_2)(1))\
+                        (('3')(KEY_3)(0))\
+                        (('£')(KEY_3)(1))\
+                        (('4')(KEY_4)(0))\
+                        (('$')(KEY_4)(1))\
+                        (('5')(KEY_5)(0))\
+                        (('%')(KEY_5)(1))\
+                        (('6')(KEY_6)(0))\
+                        (('^')(KEY_6)(1))\
+                        (('7')(KEY_7)(0))\
+                        (('&')(KEY_7)(1))\
+                        (('8')(KEY_8)(0))\
+                        (('*')(KEY_8)(1))\
+                        (('9')(KEY_9)(0))\
+                        (('(')(KEY_9)(1))\
                         (('a')(KEY_A)(0))\
                         (('A')(KEY_A)(1))\
                         (('b')(KEY_B)(0))\
@@ -122,21 +140,29 @@ private:
                         (('Y')(KEY_Y)(1))\
                         (('z')(KEY_Z)(0))\
                         (('Z')(KEY_Z)(1))\
-                        ((' ')(KEY_SPACE)(0))
+                        ((' ')(KEY_SPACE)(0))\
+                        (('0')(KEY_0)(0))\
+                        ((')')(KEY_0)(1))\
 
-                switch(c){
                         #define VIRTUAL_KBD_aux(r,data,elem) \
-                                case BOOST_PP_SEQ_ELEM(0,elem): \
-                                        out( \
+                                m_.insert( std::make_pair(\
+                                        BOOST_PP_SEQ_ELEM(0,elem) , \
+                                        std::make_tuple( \
                                                 BOOST_PP_SEQ_ELEM(1,elem) , \
-                                                BOOST_PP_SEQ_ELEM(2,elem) ); \
-                                        return true;
+                                                BOOST_PP_SEQ_ELEM(2,elem) ) ) ); 
                         BOOST_PP_SEQ_FOR_EACH( VIRTUAL_KBD_aux,~,VIRTUAL_KBD_char_mapping )
                         #undef VIRTUAL_KBD_aux
-                        default:
-                                return false;
-                }
+
+                auto iter = m_.find( c );
+                if( iter == m_.end() )
+                        return false;
+                using std::get;
+                out( get<0>(iter->second), get<1>(iter->second) );
+                return true;
                 #undef VIRTUAL_KBD_char_mapping
-                assert(0);
         }
+
+        boost::xpressive::sregex rgx_, tab_, f1_, f2_, f3_;
+        key_conv_detail::contex ctx_;
+        std::map<char,std::tuple<__u16,bool> > m_;
 };

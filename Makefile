@@ -1,4 +1,5 @@
-CXXFLAGS=-std=c++14
+CXXFLAGS+=-std=c++14
+CXXFLAGS+=-ggdb3
 CPPFLAGS+=-DBOOST_LOG_DYN_LINK
 
 LDLIBS+=-lboost_system

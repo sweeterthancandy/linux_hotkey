@@ -12,6 +12,7 @@
 #include <boost/xpressive/xpressive.hpp>
 #include <boost/xpressive/regex_actions.hpp>
 #include <boost/xpressive/regex_constants.hpp>
+#include <boost/log/trivial.hpp>
 
 #include "key_conv.h"
 
@@ -114,6 +115,9 @@ void virtual_keyboard::unshift_(){
         backend_->put( EV_KEY, KEY_RIGHTSHIFT, 0 );
 }
 void virtual_keyboard::press_(__u16 key,bool is_upper){
+        BOOST_LOG_TRIVIAL(error) << "press_("
+                + boost::lexical_cast<std::string>(key) + ","
+                + boost::lexical_cast<std::string>(is_upper) + ")";
         if( is_upper )
                 shift_();
         backend_->put( EV_KEY, key, 1 );

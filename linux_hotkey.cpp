@@ -85,11 +85,11 @@ struct driver{
                         if( ! ifstr.is_open() )
                                 BOOST_THROW_EXCEPTION(std::logic_error("unable to open config file"));
                         for( std::string line; std::getline(ifstr,line);)
-                                sstr << line;
+                                sstr << line << "\n";
                 } 
                 BOOST_LOG_TRIVIAL(error) << cmds.size();
                 for( auto const& s : cmds ){
-                        sstr << s;
+                        sstr << s << "\n";
                 }
 
                 key_conv konv;
@@ -117,6 +117,7 @@ struct driver{
                                         std::cout << boost::format("dispatching {%s} -> {%s}\n")
                                                 % seq % map;
                                         kbd_->from_string( map );
+                                        kbd_->sync_flush();
                                 } );
                         } else{
                                 std::cerr << "unable to parse \"" << line << "\"\n";
@@ -132,6 +133,14 @@ struct driver{
                         {
                                 auto sptr = std::make_shared<event_monitor>(io_, iter->path().string());
                                 sptr->connect( [this](const std::string& dev, const struct input_event& ev){
+                                        BOOST_LOG_TRIVIAL(error) << 
+                                                dev << " => " 
+                                                        << "{"
+                                                                << ev.type << ","
+                                                                << ev.code << ","
+                                                                << ev.value
+                                                        << "}";
+
                                         if(ev.type == EV_KEY){
                                                 if( ev.value == 0 ){ // uo
                                                         state_.up( ev.code );
