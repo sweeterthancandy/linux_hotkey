@@ -61,6 +61,10 @@ struct key_conv{
                 }
                 return iter;
         }
+        template<class Output>
+        bool operator()(char c, Output&& out){
+                return try_single_(c,out);
+        }
 private:
         template<class Output>
         bool try_single_(char c, Output&& out){

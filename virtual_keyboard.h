@@ -13,6 +13,8 @@ namespace virtual_keyboard_detail{
         struct virtual_keyboard_backend;
 }
 
+struct key_conv;
+
 /*
  * point of this is to avoid boiler plate details,
  * abstructing the linux macros
@@ -23,28 +25,15 @@ struct virtual_keyboard{
 
         explicit virtual_keyboard(const std::string& name);
         void graph_or_space(char c);
+        void from_string(const std::string& s);
         void tab();
         void sync_flush();
 private:
         void shift_();
         void unshift_();
-        void press_(__u16 key);
+        void press_(__u16 key, bool is_upper);
         std::shared_ptr<backend_t>   backend_;
+        std::shared_ptr<key_conv> kconv_;
 };
 
 
-/*
- * takes a string and executes them
- */
-struct virtual_keyboard_parser{
-
-        boost::xpressive::sregex rgx_;
-        boost::xpressive::sregex tab_;
-
-        virtual_keyboard_parser();
-        void parse(std::string const& cmd);
-private:
-        bool try_parse_single_char_(char c);
-
-        virtual_keyboard kbd_;
-};

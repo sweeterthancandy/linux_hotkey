@@ -116,7 +116,7 @@ struct driver{
                                 pm_.push( target_state, [this,seq,map](){ 
                                         std::cout << boost::format("dispatching {%s} -> {%s}\n")
                                                 % seq % map;
-                                        kbd_->parse( map );
+                                        kbd_->from_string( map );
                                 } );
                         } else{
                                 std::cerr << "unable to parse \"" << line << "\"\n";
@@ -148,7 +148,7 @@ struct driver{
                                 monitors_.emplace_back(sptr);
                         }
                 }
-                kbd_ = std::make_shared<virtual_keyboard_parser>();
+                kbd_ = std::make_shared<virtual_keyboard>("hotkey-kbd");
         }
         int run(){
                 io_.run();
@@ -156,7 +156,7 @@ struct driver{
 private:
         boost::asio::io_service io_;
         std::vector<std::shared_ptr<event_monitor> > monitors_;
-        std::shared_ptr<virtual_keyboard_parser> kbd_;
+        std::shared_ptr<virtual_keyboard> kbd_;
         pattern_matcher pm_;
         keyboard_state state_;
         boost::program_options::variables_map vm_;
