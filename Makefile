@@ -2,6 +2,7 @@ CXXFLAGS=-std=c++14
 
 LDLIBS+=-lboost_system
 LDLIBS+=-lboost_filesystem
+LDLIBS+=-lboost_program_options
 LDLIBS+=-lstdc++
 
 
