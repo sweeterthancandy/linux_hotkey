@@ -15,10 +15,13 @@ default-target: linux_hotkey
 
 linux_hotkey: linux_hotkey.o virtual_keyboard.o
 
+
+
 %: %.cpp
 
-linux_hotkey.o: virtual_keyboard.h 
-virtual_keyboard.o: virtual_keyboard.h
+ALLHEADERS= event_monitor.h keyboard_state.h key_conv.h pattern_matcher.h virtual_keyboard.h
+linux_hotkey.o: $(ALLHEADERS)
+virtual_keyboard.o:$(ALLHEADERS) 
 
 .PHONY: clean
 clean:

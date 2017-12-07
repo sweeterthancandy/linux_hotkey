@@ -34,10 +34,16 @@ struct key_conv{
         key_conv(){
                 using namespace key_conv_detail;
                 tab_ = xpr::as_xpr("<TAB>")  [semantics::dispatch_key(xpr::ref(ctx_),KEY_TAB,false)];
+                enter_ = xpr::as_xpr("<ENTER>")[semantics::dispatch_key(xpr::ref(ctx_),KEY_ENTER,false)];
                 f1_ = xpr::as_xpr("<F1>")    [semantics::dispatch_key(xpr::ref(ctx_),KEY_F1,false)];
                 f2_ = xpr::as_xpr("<F2>")    [semantics::dispatch_key(xpr::ref(ctx_),KEY_F2,false)];
                 f3_ = xpr::as_xpr("<F3>")    [semantics::dispatch_key(xpr::ref(ctx_),KEY_F3,false)];
-                rgx_ = tab_ | f1_ | f2_ | f3_;
+                f4_ = xpr::as_xpr("<F4>")    [semantics::dispatch_key(xpr::ref(ctx_),KEY_F4,false)];
+                f5_ = xpr::as_xpr("<F5>")    [semantics::dispatch_key(xpr::ref(ctx_),KEY_F5,false)];
+                f6_ = xpr::as_xpr("<F6>")    [semantics::dispatch_key(xpr::ref(ctx_),KEY_F6,false)];
+                f7_ = xpr::as_xpr("<F7>")    [semantics::dispatch_key(xpr::ref(ctx_),KEY_F7,false)];
+                f8_ = xpr::as_xpr("<F8>")    [semantics::dispatch_key(xpr::ref(ctx_),KEY_F8,false)];
+                rgx_ = tab_ | enter_ | f1_ | f2_ | f3_ | f4_ | f5_ | f6_ | f7_ | f8_;
         }
         // out(__u16, bool upper)
         // aBc<ESC> -> 
@@ -48,14 +54,14 @@ struct key_conv{
         Iter operator()(Iter iter, Iter last, Output&& out){
                 ctx_.callback = out;
                 for(;iter!=last;++iter){
-                        if( try_single_(*iter,out) )
-                                continue;
                         namespace xpr = boost::xpressive;
                         xpr::smatch m;
                         if( xpr::regex_search(iter, last, m, rgx_ ) ){
                                 iter += m.length() - 1;
                                 continue;
                         }
+                        if( try_single_(*iter,out) )
+                                continue;
                         break;
                 }
                 return iter;
@@ -143,6 +149,10 @@ private:
                         ((' ')(KEY_SPACE)(0))\
                         (('0')(KEY_0)(0))\
                         ((')')(KEY_0)(1))\
+                        ((',')(KEY_COMMA)(0))\
+                        (('<')(KEY_COMMA)(1))\
+                        (('.')(KEY_DOT)(0))\
+                        (('>')(KEY_DOT)(1))\
 
                         #define VIRTUAL_KBD_aux(r,data,elem) \
                                 m_.insert( std::make_pair(\
@@ -154,15 +164,17 @@ private:
                         #undef VIRTUAL_KBD_aux
 
                 auto iter = m_.find( c );
-                if( iter == m_.end() )
+                if( iter == m_.end() ){
+                        std::cerr << "no mapping for " << c << "\n";
                         return false;
+                }
                 using std::get;
                 out( get<0>(iter->second), get<1>(iter->second) );
                 return true;
                 #undef VIRTUAL_KBD_char_mapping
         }
 
-        boost::xpressive::sregex rgx_, tab_, f1_, f2_, f3_;
+        boost::xpressive::sregex rgx_, tab_, enter_, f1_, f2_, f3_, f4_, f5_, f6_, f7_, f8_;
         key_conv_detail::contex ctx_;
         std::map<char,std::tuple<__u16,bool> > m_;
 };

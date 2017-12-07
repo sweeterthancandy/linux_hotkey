@@ -8,6 +8,8 @@
 #include <linux/input.h>
 #include <linux/uinput.h>
 
+#include <time.h>
+
 #include <boost/format.hpp>
 #include <boost/xpressive/xpressive.hpp>
 #include <boost/xpressive/regex_actions.hpp>
@@ -66,6 +68,12 @@ namespace virtual_keyboard_detail{
                 }
                 void sync(){
                         put( EV_SYN, SYN_REPORT, 0 );
+                        #if 1
+                        struct timespec ts = {0};
+                        timespec out = {0};
+                        ts.tv_nsec = 1000000000;
+                        //nanosleep(&ts, &out);
+                        #endif
                 }
                 void flush(){
                         if( buffer_.size() ){
@@ -121,11 +129,22 @@ void virtual_keyboard::press_(__u16 key,bool is_upper){
         if( is_upper )
                 shift_();
         backend_->put( EV_KEY, key, 1 );
+        sync_flush();
+        
+
+
         backend_->put( EV_KEY, key, 0 );
         if( is_upper )
                 unshift_();
+        sync_flush();
+                        
+        struct timespec ts = {0};
+        timespec out = {0};
+        ts.tv_nsec = 1000000000 / 10;
+        nanosleep(&ts, &out);
 }
 void virtual_keyboard::from_string(const std::string& s){
+        std::cerr << "from_string(" << s << ")\n";
         auto iter = s.begin(), end = s.end();
 
         std::vector<std::tuple<__u16,bool> > buffer;
