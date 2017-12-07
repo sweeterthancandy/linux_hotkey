@@ -2,6 +2,48 @@
 
 // this class converts between from string seqiunce, and real keys
 
+struct key_decl{
+        key_decl(std::string const& str, __u16 key, bool upper)
+                :str_(str), key_(key), upper_(upper)
+        {}
+        auto Str()const{ return str_; }
+        auto Key()const{ return key_; }
+        auto IsUpper()const{ return upper_; }
+private:
+        std::string str_;
+        __u16 key_;
+        bool upper_;
+};
+
+struct key_decl_world{
+        boost::optional<key_decl> FromString(std::string const& s)const{
+                auto iter = string_m_.find(key);
+                if( iter == string_m_.end())
+                        return boost::none;
+                return iter->second;
+        }
+        boost::optional<key_decl> FromKey(__u16 key)const{
+                auto iter = key_m_.find(key);
+                if( iter == key_m_.end())
+                        return boost::none;
+                return iter->second;
+        }
+        template<class... Args>
+        void Emplace(Args&&... args){
+                key_decl decl{args...};
+                string_m_.emplace(decl.Str(), decl);
+                key_m_.emplace(decl.Key(), decl);
+        }
+        static key_decl_world& Get()const{
+                static key_decl_world* mem = 0;
+                if( mem == 0 ){
+                        return 
+                }
+private:
+        std::map< std::string, key_decl> string_m_;
+        std::map< __u16, key_decl> key_m_;
+};
+
 namespace key_conv_detail{
         namespace xpr = boost::xpressive;
 
